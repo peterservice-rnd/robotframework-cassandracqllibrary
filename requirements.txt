@@ -1,0 +1,2 @@
+cassandra-driver==3.12.1
+robotframework==3.0.2
