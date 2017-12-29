@@ -5,7 +5,7 @@ from codecs import open
 from os import path
 
 # Always prefer setuptools over distutils
-from setuptools import setup, find_packages
+from setuptools import setup
 
 here = path.abspath(path.dirname(__file__))
 
@@ -15,7 +15,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='robotframework-cassandracqllibrary',
-    version='1.0.0',
+    version='1.0.0.dev1',
     description='A Robot Framework Cassandra Database Library',
     long_description=long_description,
     url='https://github.com/peterservice-rnd/robotframework-cassandracqllibrary',
@@ -23,18 +23,15 @@ setup(
     license='Apache License, Version 2.0',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
-
         'Intended Audience :: Developers',
         'Topic :: Software Development :: Testing',
-
         'License :: OSI Approved :: Apache Software License',
-
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
     ],
-    keywords='testing,robot framework,cassandra,cql',
-    packages=find_packages(),
+    keywords='testing robotframework cassandra cql',
+    py_modules=['CassandraCQLLibrary'],
     install_requires=['cassandra-driver', 'robotframework'],
 )
