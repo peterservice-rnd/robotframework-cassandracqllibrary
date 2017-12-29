@@ -17,8 +17,6 @@ pip install robotframework-cassandracqllibrary
 Example
 ---
 
-Example command to run test using pabot with report portal listener.
- 
     *** Settings ***
     Library           CassandraCQLLibrary
     Library           Collections
