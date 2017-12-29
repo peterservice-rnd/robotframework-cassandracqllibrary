@@ -15,7 +15,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='robotframework-cassandracqllibrary',
-    version='1.0.0.dev1',
+    version='1.0.0',
     description='A Robot Framework Cassandra Database Library',
     long_description=long_description,
     url='https://github.com/peterservice-rnd/robotframework-cassandracqllibrary',
