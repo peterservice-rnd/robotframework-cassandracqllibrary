@@ -9,7 +9,7 @@ class CassandraCQLLibrary(object):
     """
     Library for executing CQL statements in database [ http://cassandra.apache.org/ | Apache Cassandra ].
 
-    == Dependency ==
+    == Dependencies ==
     | datastax python-driver | https://github.com/datastax/python-driver |
     | robot framework | http://robotframework.org |
 
@@ -52,7 +52,7 @@ class CassandraCQLLibrary(object):
         _alias_ - connection alias;\n
 
         *Returns:*\n
-        Index of the current connection.
+        Index of current connection.
 
         *Example:*\n
         | Connect To Cassandra  |  192.168.1.108  |  9042  |  alias=cluster1 |
@@ -69,7 +69,7 @@ class CassandraCQLLibrary(object):
 
     def disconnect_from_cassandra(self):
         """
-        Close the current connection with cluster.
+        Close current connection with cluster.
 
         *Example:*\n
         | Connect To Cassandra  |  server-host.local |
@@ -135,7 +135,7 @@ class CassandraCQLLibrary(object):
         _statement_ - CQL statement;
 
         *Returns:*\n
-        Result of the statement.
+        Execution result.
 
         *Example:*\n
         | ${result}=  |  Execute CQL  |  SELECT * FROM system.schema_keyspaces; |
