@@ -18,12 +18,12 @@ with open(path.join(here, 'requirements.txt')) as f:
 
 setup(
     name='robotframework-cassandracqllibrary',
-    version='1.0.1a',
+    version='1.0.0',
     description='A Robot Framework Cassandra Database Library',
     long_description=long_description,
     url='https://github.com/peterservice-rnd/robotframework-cassandracqllibrary',
-    author='AIST',
-    author_email='aist@billing.ru',
+    author='JSC PETER-SERVICE',
+    author_email='drse_aist_all@billing.ru',
     license='Apache License 2.0',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
