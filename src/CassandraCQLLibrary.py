@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 
+from typing import List, Optional, Union
+
 from robot.api import logger
 from robot.utils import ConnectionCache
-from cassandra.cluster import Cluster
+from cassandra.auth import PlainTextAuthProvider
+from cassandra.policies import TokenAwarePolicy, DCAwareRoundRobinPolicy
+from cassandra.cluster import Cluster, ResponseFuture, ResultSet, Session
 
 
 class CassandraCQLLibrary(object):
@@ -33,41 +37,64 @@ class CassandraCQLLibrary(object):
 
     ROBOT_LIBRARY_SCOPE = 'GLOBAL'
 
-    def __init__(self):
+    def __init__(self) -> None:
         """ Initialization. """
-        self._connection = None
+        self._connection: Optional[Session] = None
         self._cache = ConnectionCache()
 
-    def connect_to_cassandra(self, host, port=9042, alias=None):
+    @property
+    def keyspace(self) -> str:
+        """Get keyspace Cassandra.
+
+        Returns:
+            keyspace: the name of the keyspace in Cassandra.
+        """
+        if self._connection is None:
+            raise Exception('There is no connection to Cassandra cluster.')
+        return self._connection.keyspace
+
+    def connect_to_cassandra(self, host: str, port: Union[int, str] = 9042, alias: str = None, keyspace: str = None,
+                             username: str = None, password: str = '') -> Session:
         """
         Connect to Apache Cassandra cluster.
 
-        Only AllowAllAuthenticator is supported as authentication backend.
+        AllowAllAuthenticator and PasswordAuthenticator are supported as authentication backend.
         This setting should be in configuration file cassandra.yaml:
+        by default:
         | authenticator: AllowAllAuthenticator
+        or for password authentification:
+        | authenticator: PasswordAuthenticator
 
         *Args:*\n
-        _host_ - IP address or host name of a cluster node;\n
-        _port_ - connection port;\n
-        _alias_ - connection alias;\n
+            _host_ - IP address or host name of a cluster node;\n
+            _port_ - connection port;\n
+            _alias_ - connection alias;\n
+            _keyspace_ - the name of the keyspace that the UDT is defined in;\n
+            _username_ - username to connect to cassandra
+            _password_ - password for username
 
         *Returns:*\n
-        Index of current connection.
+            Index of current connection.
 
         *Example:*\n
         | Connect To Cassandra  |  192.168.1.108  |  9042  |  alias=cluster1 |
         """
-        logger.info('Connecting using : host={0}, port={1}, alias={2}'
-                    .format(host, port, alias))
+
+        logger.info('Connecting using : host={0}, port={1}, alias={2}'.format(host, port, alias))
         try:
-            cluster = Cluster([host], port=int(port))
+            auth_provider = PlainTextAuthProvider(username=username, password=password) if username else None
+            cluster = Cluster([host], port=int(port), auth_provider=auth_provider,
+                              load_balancing_policy=TokenAwarePolicy(DCAwareRoundRobinPolicy()))
+
             session = cluster.connect()
+            if keyspace is not None:
+                session.set_keyspace(keyspace)
             self._connection = session
             return self._cache.register(self._connection, alias)
         except Exception as e:
             raise Exception('Connect to Cassandra error: {0}'.format(e))
 
-    def disconnect_from_cassandra(self):
+    def disconnect_from_cassandra(self) -> None:
         """
         Close current connection with cluster.
 
@@ -75,9 +102,11 @@ class CassandraCQLLibrary(object):
         | Connect To Cassandra  |  server-host.local |
         | Disconnect From Cassandra |
         """
+        if self._connection is None:
+            raise Exception('There is no connection to Cassandra cluster.')
         self._connection.shutdown()
 
-    def close_all_cassandra_connections(self):
+    def close_all_cassandra_connections(self) -> None:
         """
         Close all connections with cluster.
 
@@ -95,7 +124,7 @@ class CassandraCQLLibrary(object):
         """
         self._connection = self._cache.close_all(closer_method='shutdown')
 
-    def switch_cassandra_connection(self, index_or_alias):
+    def switch_cassandra_connection(self, index_or_alias: Union[int, str]) -> int:
         """
         Switch between active connections with several clusters using their index or alias.
 
@@ -103,10 +132,10 @@ class CassandraCQLLibrary(object):
         which also returns the index of connection.
 
         *Args:*\n
-        _index_or_alias_ - connection index or alias;
+            _index_or_alias_ - connection index or alias;
 
         *Returns:*\n
-        Index of the previous connection.
+            Index of the previous connection.
 
         *Example:* (switch by alias)\n
         | Connect To Cassandra  |  192.168.1.108  | alias=cluster1 |
@@ -127,15 +156,15 @@ class CassandraCQLLibrary(object):
         self._connection = self._cache.switch(index_or_alias)
         return old_index
 
-    def execute_cql(self, statement):
+    def execute_cql(self, statement: str) -> ResultSet:
         """
         Execute CQL statement.
 
         *Args:*\n
-        _statement_ - CQL statement;
+            _statement_ - CQL statement;
 
         *Returns:*\n
-        Execution result.
+            Execution result.
 
         *Example:*\n
         | ${result}=  |  Execute CQL  |  SELECT * FROM system.schema_keyspaces; |
@@ -143,33 +172,39 @@ class CassandraCQLLibrary(object):
         =>\n
         system
         """
+        if not self._connection:
+            raise Exception('There is no connection to Cassandra cluster.')
+
         logger.debug("Executing :\n %s" % statement)
-        result = self._connection.execute(statement)
+        result = self._connection.execute(statement, timeout=60)
         return result
 
-    def execute_async_cql(self, statement):
+    def execute_async_cql(self, statement: str) -> ResponseFuture:
         """
         Execute asynchronous CQL statement.
 
         *Args:*\n
-        _statement_ - CQL statement;
+            _statement_ - CQL statement;
 
         *Returns:*\n
-        Object that can be used with keyword [#Get Async Result | Get Async Result] to get the result of CQL statement.
+            Object that can be used with keyword [#Get Async Result | Get Async Result] to get the result of CQL statement.
         """
+        if not self._connection:
+            raise Exception('There is no connection to Cassandra cluster.')
+
         logger.debug("Executing :\n %s" % statement)
         future = self._connection.execute_async(statement)
         return future
 
-    def get_async_result(self, future):
+    def get_async_result(self, future: ResponseFuture) -> ResultSet:
         """
         Get the result of asynchronous CQL statement.
 
         *Args:*\n
-        _future_ - object, returned as a result of keyword [#Execute Async Cql | Execute Async Cql]
+            _future_ - object, returned as a result of keyword [#Execute Async Cql | Execute Async Cql]
 
         *Returns:*\n
-        Result of asynchronous CQL statement.
+            Result of asynchronous CQL statement.
 
         *Example:*\n
         | ${obj}=  |  Execute Async Cql  |  SELECT * FROM system.schema_keyspaces; |
@@ -185,16 +220,16 @@ class CassandraCQLLibrary(object):
             raise Exception('Operation failed: {0}'.format(e))
         return result
 
-    def get_column(self, column, statement):
+    def get_column(self, column: str, statement: str) -> List[str]:
         """
         Get column values from the data sampling.
 
         *Args:*\n
-        _column_ - name of the column which value you want to get;\n
-        _statement_ - CQL select statement.
+            _column_ - name of the column which value you want to get;\n
+            _statement_ - CQL select statement.
 
         *Returns:*\n
-        List of column values.
+            List of column values.
 
         *Example:*\n
         | ${result}=  |  Get Column  |  keyspace_name  |  SELECT * FROM system.schema_keyspaces LIMIT 2; |
@@ -211,11 +246,11 @@ class CassandraCQLLibrary(object):
             result_values.append(column_attr)
         return result_values
 
-    def get_column_from_schema_keyspaces(self, column):
+    def get_column_from_schema_keyspaces(self, column: str) -> List[str]:
         """Get column values from the table schema_keyspaces.
 
         *Args:*\n
-            column - the name of the column which values you want to get;\n
+            _column_ - the name of the column which values you want to get;\n
 
         *Returns:*\n
             List of column values from the table schema_keyspaces.
